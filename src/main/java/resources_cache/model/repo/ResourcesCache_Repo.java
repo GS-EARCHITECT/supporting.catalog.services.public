@@ -5,6 +5,9 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -26,6 +29,9 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
+	@Autowired
+	private Executor asyncExecutor;
+	
 	@Autowired
 	private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
@@ -294,7 +300,8 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 		String qryString = "select * from resource_location_master where location_seq_no in (:locList)";
 		CompletableFuture<ArrayList<Long>> future = CompletableFuture.supplyAsync(() -> {
 			ArrayList<Long> resList = null;
-			ArrayList<ResourceLocationMaster_DTO> lResourcelLocationMaster_DTOs = (ArrayList<ResourceLocationMaster_DTO>) namedParameterJdbcTemplate
+			ArrayList<ResourceLocationMaster_DTO> lResourcelLocationMaster_DTOs = (ArrayList<ResourceLocationMaster_DTO>)
+					namedParameterJdbcTemplate
 					.query(qryString, mapSqlParameterSource,
 							(rs, rowNum) -> new ResourceLocationMaster_DTO(rs.getLong("resource_seq_no"),
 									rs.getLong("location_seqNo"), rs.getLong("company_seq_no"), rs.getFloat("qty"),
@@ -314,8 +321,8 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 
 	// no DTO basis - get supplierclassList from resource_catalog_compclasses
 	@Async
-	public CompletableFuture<ArrayList<Long>> findSupplierForResourceCatalog(Long resCatSeqNo) {
-		String qryString = "select comp_class_seq_no from resource_catalog_compclasses where resource_catalog_seq_no = :resCatSeqNo";
+	public CompletableFuture<ArrayList<Long>> findSuppliersForResourceCatalog(Long resCatSeqNo) {
+		String qryString = "select company_class_seq_no from resource_catalog_compclasses where resource_catalog_seq_no = :resCatSeqNo";
 		CompletableFuture<ArrayList<Long>> future = CompletableFuture.supplyAsync(() -> {
 			List<Long> compClassList = jdbcTemplate.queryForList(qryString, Long.class, resCatSeqNo);
 			return (ArrayList<Long>) compClassList;
@@ -328,8 +335,10 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 	@Async
 	public CompletableFuture<ArrayList<Long>> findSupplierListForSupplierClasses(ArrayList<Long> suppClassList) {
 		String qryString = "select supplier_seq_no from supplier_class_details where supplier_class_seq_no in (:suppClassList)";
+		MapSqlParameterSource mapSqlParameterSource = new MapSqlParameterSource();
+		mapSqlParameterSource.addValue("suppClassList",suppClassList);	
 		CompletableFuture<ArrayList<Long>> future = CompletableFuture.supplyAsync(() -> {
-			List<Long> suppList = jdbcTemplate.queryForList(qryString, Long.class, suppClassList);
+			List<Long> suppList = namedParameterJdbcTemplate.queryForList(qryString, mapSqlParameterSource,Long.class);
 			return (ArrayList<Long>) suppList;
 		});
 		return future;
@@ -339,8 +348,10 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 	@Async
 	public CompletableFuture<ArrayList<Long>> findResourcesForSuppliers(ArrayList<Long> suppList) {
 		String qryString = "select resource_seq_no from supplier_prodserv_details where supplier_seq_no in (:suppList)";
+		MapSqlParameterSource mapSqlParameterSource = new MapSqlParameterSource();
+		mapSqlParameterSource.addValue("suppList",suppList);
 		CompletableFuture<ArrayList<Long>> future = CompletableFuture.supplyAsync(() -> {
-			List<Long> resList = jdbcTemplate.queryForList(qryString, Long.class, suppList);
+			List<Long> resList = namedParameterJdbcTemplate.queryForList(qryString, mapSqlParameterSource,Long.class);
 			return (ArrayList<Long>) resList;
 		});
 		return future;
@@ -348,58 +359,119 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 
 	// noDTO - get ratingsList from resource_catalog_ratings
 	@Async
-	public CompletableFuture<ArrayList<Float>> findRatingsForResourceCatalog(Long resCatSeqNo) {
-		String qryString = "select rating from resource_catalog_ratings where res_catalog_seq_no = :resCatSeqNo";
+	public ArrayList<Float> findRatingsForResourceCatalog(Long resCatSeqNo) {
+		String qryString = "select rating from resource_catalog_ratings where resource_catalog_seq_no = :resCatSeqNo";
+		ArrayList<Float> rateList2 = null;
 		CompletableFuture<ArrayList<Float>> future = CompletableFuture.supplyAsync(() -> {
 			List<Float> rateList = jdbcTemplate.queryForList(qryString, Float.class, resCatSeqNo);
 			return (ArrayList<Float>) rateList;
-		});
-		return future;
+		},asyncExecutor);
+		
+		try {
+			rateList2 = future.get();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return rateList2;
 	}
 
 	// noDTO - resources for matching prodservseqnos in SUPPLIER_PRODSERV_details &
 	// SUPPLIER_PRODSERV_ratings & ratingsList
 	@Async
-	public CompletableFuture<ArrayList<Long>> findResourcesForRatings(ArrayList<Float> ratingsList) {
+	public ArrayList<Long> findResourcesForRatings(ArrayList<Float> ratingsList) {
 		String qryString = "select a.resource_seq_no from supplier_prodserv_details a, supplier_prodserv_ratings b where (a.SUPP_PRODSERV_SEQ_NO = b.SUPP_PRODSERV_SEQ_NO and b.rating in (:ratingsList))";
+		ArrayList<Long> resList2 = null;
+		MapSqlParameterSource mapSqlParameterSource = new MapSqlParameterSource();
+		mapSqlParameterSource.addValue("ratingsList",ratingsList);
 		CompletableFuture<ArrayList<Long>> future = CompletableFuture.supplyAsync(() -> {
-			List<Long> resList = jdbcTemplate.queryForList(qryString, Long.class, ratingsList);
+			List<Long> resList = namedParameterJdbcTemplate.queryForList(qryString, mapSqlParameterSource,Long.class);
 			return (ArrayList<Long>) resList;
-		});
-		return future;
+		},asyncExecutor);
+		
+		try {
+			resList2 = future.get();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}		
+		return resList2;
 	}
 
 	// noDTO - get priceRange from resource_catalog_pricerange
 	@Async
-	public CompletableFuture<Float> findPriceRangeUpForResourceCatalog(Long resCatSeqNo) {
-		String qryString = "select priceFr from resource_catalog_pricerange where res_catalog_seq_no = :resCatSeqNo";
+	public Float findPriceRangeLowForResourceCatalog(Long resCatSeqNo) {
+		String qryString = "select price_fr from resource_catalog_pricerange where rownum=1 and resource_catalog_seq_no = :resCatSeqNo";
+		Float lowPrice = null;
 		CompletableFuture<Float> future = CompletableFuture.supplyAsync(() -> {
 			Float rate = jdbcTemplate.queryForObject(qryString, Float.class, resCatSeqNo);
 			return rate;
-		});
-		return future;
+		},asyncExecutor);
+		
+		try {
+			lowPrice = future.get();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return lowPrice;
 	}
 
 	@Async
-	public CompletableFuture<Float> findPriceRangeDownForResourceCatalog(Long resCatSeqNo) {
-		String qryString = "select priceTo from resource_catalog_pricerange where res_catalog_seq_no = :resCatSeqNo";
+	public Float findPriceRangeHighForResourceCatalog(Long resCatSeqNo) {
+		String qryString = "select price_to from resource_catalog_pricerange where rownum=1 and resource_catalog_seq_no = :resCatSeqNo";
+		Float hiPrice = null;		
 		CompletableFuture<Float> future = CompletableFuture.supplyAsync(() -> {
 			Float rate = jdbcTemplate.queryForObject(qryString, Float.class, resCatSeqNo);
 			return rate;
-		});
-		return future;
+		},asyncExecutor);
+		
+		try {
+			hiPrice = future.get();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return hiPrice;
 	}
 
 	// noDTO - get resources for matching prodservseqnos in
 	// SUPPLIER_PRODSERV_details & SUPPLIER_PRODSERV_prices & priceRange
 	@Async
-	public CompletableFuture<ArrayList<Long>> findResourcesForPriceRange(Float lPrice, Float hPrice) {
-		String qryString = "select a.resource_seq_no from supplier_prodserv_details a, supplier_prodserv_prices b where (a.SUPP_PRODSERV_SEQ_NO = b.SUPP_PRODSERV_SEQ_NO and b.amount >= :lPrice b.amount <= :hPrice)";
+	public ArrayList<Long> findResourcesForPriceRange(Float lPrice, Float hPrice) 
+	{
+		String qryString = "select a.resource_seq_no from supplier_prodserv_details a, supplier_prodserv_prices b where a.SUPP_PRODSERV_SEQ_NO = b.SUPP_PRODSERV_SEQ_NO and b.amount >= :lPrice and b.amount <= :hPrice";
+		ArrayList<Long> resList2 = null;
+		
 		CompletableFuture<ArrayList<Long>> future = CompletableFuture.supplyAsync(() -> {
 			List<Long> resList = jdbcTemplate.queryForList(qryString, Long.class, lPrice, hPrice);
 			return (ArrayList<Long>) resList;
 		});
-		return future;
+		
+		try {
+			resList2 = future.get();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return resList2;
 	}
 
 }

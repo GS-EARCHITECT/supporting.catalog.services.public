@@ -8,14 +8,14 @@ import resources_cache.model.master.ResourceCacheMaster;
 public interface IResourcesCache_Repo 
 {
 public CompletableFuture<ArrayList<ResourceCacheMaster>> findAllResourcesForConditions(Integer parmLength,ArrayList<Long> cList, ArrayList<Long> rList, String catalog);
-public CompletableFuture<ArrayList<Long>> findResourcesForPriceRange(Float lPrice, Float hPrice);
-public CompletableFuture<Float> findPriceRangeDownForResourceCatalog(Long resCatSeqNo);
-public CompletableFuture<Float> findPriceRangeUpForResourceCatalog(Long resCatSeqNo);
-public CompletableFuture<ArrayList<Long>> findResourcesForRatings(ArrayList<Float> ratingsList);
-public CompletableFuture<ArrayList<Float>> findRatingsForResourceCatalog(Long resCatSeqNo);
+public ArrayList<Long> findResourcesForPriceRange(Float lPrice, Float hPrice);
+public Float findPriceRangeHighForResourceCatalog(Long resCatSeqNo);
+public Float findPriceRangeLowForResourceCatalog(Long resCatSeqNo);
+public ArrayList<Long> findResourcesForRatings(ArrayList<Float> ratingsList);
+public ArrayList<Float> findRatingsForResourceCatalog(Long resCatSeqNo);
 public CompletableFuture<ArrayList<Long>> findResourcesForSuppliers(ArrayList<Long> suppList);
 public CompletableFuture<ArrayList<Long>> findSupplierListForSupplierClasses(ArrayList<Long> suppClassList);
-public CompletableFuture<ArrayList<Long>> findSupplierForResourceCatalog(Long resCatSeqNo);
+public CompletableFuture<ArrayList<Long>> findSuppliersForResourceCatalog(Long resCatSeqNo);
 public CompletableFuture<ArrayList<Long>> findResourcesForLocations(ArrayList<Long> locList);
 public CompletableFuture<ArrayList<Long>> findResourcesForLocationsnoDTO(ArrayList<Long> locList);
 public CompletableFuture<ArrayList<Long>> findLocationsForLocationsInLocationClasses(ArrayList<Long> locClassList);

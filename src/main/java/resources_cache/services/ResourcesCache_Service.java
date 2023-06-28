@@ -65,8 +65,7 @@ public class ResourcesCache_Service implements IResourcesCache_Service
 		try
 		{
 			resCatList = resCatComp.get();
-			logger.info("res class list size :"+resCatList.size());
-		} catch (InterruptedException e) {
+			} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (ExecutionException e) {
@@ -81,14 +80,12 @@ public class ResourcesCache_Service implements IResourcesCache_Service
 		{
             if (exception == null) 
             {
-            	    CompletableFuture.supplyAsync(() -> {
-            	    logger.info("future 1 size :"+input.size());
+            	    CompletableFuture.supplyAsync(() -> {            	    
             		CompletableFuture<ArrayList<Long>> resCatComp = resourcesCacheRepo.findResourcesForResourceClasses(input); 
             		ArrayList<Long> resCatList =null;
             		try
             		{
-            			resCatList = resCatComp.get();
-            			logger.info("future 2 list size :"+resCatList.size());
+            			resCatList = resCatComp.get();            			
             		} catch (InterruptedException e) {
             			// TODO Auto-generated catch block
             			e.printStackTrace();
@@ -132,8 +129,7 @@ public class ResourcesCache_Service implements IResourcesCache_Service
             		ArrayList<Long> reslLList =null;
             		try
             		{
-            			reslLList = resLComp.get();
-            			logger.info("future 4 list size :"+reslLList.size());
+            			reslLList = resLComp.get();            			
             		} catch (InterruptedException e) {
             			// TODO Auto-generated catch block
             			e.printStackTrace();
@@ -153,14 +149,12 @@ public class ResourcesCache_Service implements IResourcesCache_Service
 		{
             if (exception == null) 
             {
-            		logger.info("future 4 size :"+input.size());
-            	    CompletableFuture.supplyAsync(() -> {
+            		CompletableFuture.supplyAsync(() -> {
             		CompletableFuture<ArrayList<Long>> resComp = resourcesCacheRepo.findResourcesForLocations(input); 
             		ArrayList<Long> resList =null;
             		try
             		{
-            			resList = resComp.get();
-            			logger.info("future 5 list size :"+resList.size());
+            			resList = resComp.get();            		
             		} catch (InterruptedException e) {
             			// TODO Auto-generated catch block
             			e.printStackTrace();
@@ -177,16 +171,96 @@ public class ResourcesCache_Service implements IResourcesCache_Service
         });
 				
 				// get supplierclassList from resource_catalog_compclasses
-				// get suppliersList for suppliers in supplierClassList from supplier_class_details
+		CompletableFuture<ArrayList<Long>> future6 = CompletableFuture.supplyAsync(() -> 
+		{
+			CompletableFuture<ArrayList<Long>> supClassComp = resourcesCacheRepo.findSuppliersForResourceCatalog(resCatSeqNo); 
+			ArrayList<Long> supClassList =null;
+			try
+			{
+				supClassList = supClassComp.get();				
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (ExecutionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}			
+				return supClassList;
+			},asyncExecutor);
+		
+		// get suppliersList for suppliers in supplierClassList from supplier_class_details
+		CompletableFuture<ArrayList<Long>> future7 = future6.whenComplete((input, exception) -> 
+		{
+            if (exception == null) 
+            {
+            		CompletableFuture.supplyAsync(() -> {
+            		CompletableFuture<ArrayList<Long>> supComp = resourcesCacheRepo.findSupplierListForSupplierClasses(input); 
+            		ArrayList<Long> supList =null;
+            		try
+            		{
+            			supList = supComp.get();            		
+            		} catch (InterruptedException e) {
+            			// TODO Auto-generated catch block
+            			e.printStackTrace();
+            		} catch (ExecutionException e) {
+            			// TODO Auto-generated catch block
+            			e.printStackTrace();
+            		}			
+            			return supList;
+            		},asyncExecutor);            	
+            	
+            } else {
+                System.out.println("Supplers List exception, No Result: " + input);
+            }
+        });
+		
 				// get resources for suppliersList from SUPPLIER_PRODSERV_details	
-				
-				// get ratingsList from resource_catalog_ratings
-				// get resources for matching prodservseqnos in SUPPLIER_PRODSERV_details & SUPPLIER_PRODSERV_ratings & ratingsList 
-				
-				// get high and low price range from resource_catalog_pricerange
+		CompletableFuture<ArrayList<Long>> future8 = future7.whenComplete((input, exception) -> 
+		{
+            if (exception == null) 
+            {
+            		CompletableFuture.supplyAsync(() -> {
+            		CompletableFuture<ArrayList<Long>> resComp = resourcesCacheRepo.findResourcesForSuppliers(input); 
+            		ArrayList<Long> resList =null;
+            		try
+            		{
+            			resList = resComp.get();            		
+            		} catch (InterruptedException e) {
+            			// TODO Auto-generated catch block
+            			e.printStackTrace();
+            		} catch (ExecutionException e) {
+            			// TODO Auto-generated catch block
+            			e.printStackTrace();
+            		}			
+            			return resList;
+            		},asyncExecutor);            	
+            	
+            } else {
+                System.out.println("Resource List exception, No Result: " + input);
+            }
+        });		
+		
+		// get resources for ratingsList 
+		CompletableFuture<ArrayList<Long>> future9 = CompletableFuture.supplyAsync(() -> 
+		{
+			ArrayList<Float> supRateList = resourcesCacheRepo.findRatingsForResourceCatalog(resCatSeqNo); 
+			ArrayList<Long> resList= resourcesCacheRepo.findResourcesForRatings(supRateList);
+			return resList;
+			},asyncExecutor);
+		
+			 
+		// get resources for for  high and low price range 
+		CompletableFuture<ArrayList<Long>> future10 = CompletableFuture.supplyAsync(() -> 
+		{
+			Float hiPriceList = resourcesCacheRepo.findPriceRangeLowForResourceCatalog(resCatSeqNo);
+			Float lowPriceList = resourcesCacheRepo.findPriceRangeHighForResourceCatalog(resCatSeqNo);
+			ArrayList<Long> resList= resourcesCacheRepo.findResourcesForPriceRange(lowPriceList, hiPriceList);
+			return resList;
+			},asyncExecutor);
+			
 				// get resources for matching prodservseqnos in SUPPLIER_PRODSERV_details & SUPPLIER_PRODSERV_prices & priceRange 
 		
-				List<Long> allList = Stream.of(future1, future2, future3, future4, future5).map(CompletableFuture::join).flatMap(List::stream).collect(Collectors.toList());		
+				List<Long> allList = Stream.of(future2, future5, future8, future9, future10).map(CompletableFuture::join).flatMap(List::stream).collect(Collectors.toList());		
 				return (ArrayList<Long>) allList;				
 				
 }
