@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
@@ -37,26 +38,17 @@ public class ResourceCatalogProdStructureCache_Service implements I_ResourceCata
 	
 	@Override
 	@Cacheable(value = "prodStructureCache",key = "new org.springframework.cache.interceptor.SimpleKey(#resCatSeqNo)")
-	public ArrayList<ResourceCatalogProdStructureCache> getAllResourceCatalogProdStructures(Long resCatSeqNo)
+	public CopyOnWriteArrayList<Long> getAllResourceCatalogProdStructures(Long resCatSeqNo)
 			throws InterruptedException, ExecutionException 
 	{
 
-		CompletableFuture<ArrayList<ResourceCatalogProdStructureCache>> future = CompletableFuture.supplyAsync(() -> 
+		CompletableFuture<CopyOnWriteArrayList<Long>> future = CompletableFuture.supplyAsync(() -> 
 		{			
-		CompletableFuture<ArrayList<ResourceCatalogProdStructureCache>> cresCatList = resourceCatalogProdStructureRepo.findResourceCatalogProdStructures(resCatSeqNo);
-		ArrayList<ResourceCatalogProdStructureCache> cresCatList2 = null;		
-		try {
-			cresCatList2 = cresCatList.get();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ExecutionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}		
-		return cresCatList2;
+		CopyOnWriteArrayList<Long> cresCatList = resourceCatalogProdStructureRepo.findResourceCatalogProdStructures(resCatSeqNo);
+		return cresCatList;
 		},asyncExecutor);
-		ArrayList<ResourceCatalogProdStructureCache>  ss = future.get();		
+		
+		CopyOnWriteArrayList<Long>  ss = future.get();		
 		return ss;
 	}
 }

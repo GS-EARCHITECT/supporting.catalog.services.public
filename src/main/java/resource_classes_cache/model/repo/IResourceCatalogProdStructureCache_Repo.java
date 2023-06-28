@@ -1,10 +1,8 @@
 package resource_classes_cache.model.repo;
 
-import java.util.ArrayList;
-import java.util.concurrent.CompletableFuture;
-import resource_classes_cache.model.master.ResourceCatalogProdStructureCache;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public interface IResourceCatalogProdStructureCache_Repo 
 {
-public CompletableFuture<ArrayList<ResourceCatalogProdStructureCache>> findResourceCatalogProdStructures(Long resCatSeqNo);	
+public CopyOnWriteArrayList<Long> findResourceCatalogProdStructures(Long resCatSeqNo);	
 }

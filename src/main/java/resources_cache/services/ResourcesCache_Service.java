@@ -67,7 +67,6 @@ public class ResourcesCache_Service implements IResourcesCache_Service
 		CopyOnWriteArrayList<Long> resList=null;
 		try {
 			resList = this.getResourceClassList(resCatSeqNo);
-			logger.info("list is ? "+resList.size());
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -87,22 +86,33 @@ public class ResourcesCache_Service implements IResourcesCache_Service
 		// get resourceclassList from resource_catalog_prodstructure
 		CompletableFuture<CopyOnWriteArrayList<Long>> future1 = CompletableFuture.supplyAsync(() -> 
 		{
-		CopyOnWriteArrayList<Long> resCatList = resourcesCacheRepo.findResourceClassesForCatalog(resCatSeqNo);
-		logger.info("res classes size is ? "+resCatList.size());
+		CopyOnWriteArrayList<Long> resCatList=null;
+		try {
+		resCatList = resourceCatalogProdStructureCacheServ.getAllResourceCatalogProdStructures(resCatSeqNo);
+		for (int i = 0; i < resCatList.size(); i++) 
+		{
+		logger.info("res class is : "+resCatList.get(i));	
+		}
+		
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}		
 		return resCatList;
 		},asyncExecutor);
 		
 		// get resources for resource classes in resourceclassList from resource_class_details
 		CompletableFuture<CopyOnWriteArrayList<Long>> future2 = future1.whenComplete((input, exception) -> 
 		{
-			logger.info("future 2 input res classes size is ? "+input.size());
             if (exception == null) 
             {
             	    CompletableFuture.supplyAsync(() -> 
             	    {            	    
-            	    CopyOnWriteArrayList<Long> resList = resourcesCacheRepo.findResourcesForResourceClasses(input); 
-            		logger.info("res size is ? "+resList.size());
-            		return resList;
+            	    CopyOnWriteArrayList<Long> resClList = resourcesCacheRepo.findResourcesForResourceClasses(input); 
+                   	return resClList;
             		},asyncExecutor);            	
             	
             } else {
@@ -110,9 +120,9 @@ public class ResourcesCache_Service implements IResourcesCache_Service
             }
         });
 		
-		CopyOnWriteArrayList<Long> sList = future2.get();
+		CopyOnWriteArrayList<Long> slList = future2.get();
 						
-		return sList;
+		return slList;
 }
 	
 	

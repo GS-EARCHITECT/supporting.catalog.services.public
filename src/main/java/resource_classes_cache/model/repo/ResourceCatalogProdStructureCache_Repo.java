@@ -4,11 +4,12 @@ import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Repository;
 import resource_classes_cache.model.master.ResourceCatalogProdStructureCache;
 
@@ -23,29 +24,54 @@ public class ResourceCatalogProdStructureCache_Repo implements IResourceCatalogP
 	@Autowired
 	private Executor asyncExecutor;
 	
-	@Async
-	public CompletableFuture<ArrayList<ResourceCatalogProdStructureCache>> findResourceCatalogProdStructures(Long resCatSeqNo)
+	public CopyOnWriteArrayList<Long> findResourceCatalogProdStructures(Long resCatSeqNo)
 	{		
 		
-		CompletableFuture<ArrayList<ResourceCatalogProdStructureCache>> future = CompletableFuture.supplyAsync(() -> 
+		CompletableFuture<CopyOnWriteArrayList<Long>> future = CompletableFuture.supplyAsync(() -> 
 		{
 		MapSqlParameterSource mapSqlParameterSource = new MapSqlParameterSource();
-		mapSqlParameterSource.addValue("resCatSeqNo", resCatSeqNo);		
+		mapSqlParameterSource.addValue("resCatSeqNo", resCatSeqNo);
+		CopyOnWriteArrayList<Long> cList = null;
+		
 		String qryString = "select * from resource_catalog_prodstructure a where (a.resource_catalog_seq_no = :resCatSeqNo)";
 		ArrayList<ResourceCatalogProdStructureCache> resourceCatalogProdStructures =  
 				(ArrayList<ResourceCatalogProdStructureCache>)namedParameterJdbcTemplate.query
 				(
 				 qryString,mapSqlParameterSource,
 	                (rs, rowNum) ->
-	                        new ResourceCatalogProdStructureCache(
-	                                rs.getLong("resource_catalog_seq_no"),
+	                        new ResourceCatalogProdStructureCache(	                                
 	                                rs.getLong("resource_class_seq_no"),
-	                                rs.getLong("resource_class_seq_no")	                                
+	                                rs.getLong("par_resource_class_seq_no"),
+	                                rs.getLong("resource_catalog_seq_no")
 	                        )
 	        );
-		return resourceCatalogProdStructures;
+		
+		if(resourceCatalogProdStructures!=null)
+		{
+		cList = new CopyOnWriteArrayList<Long>();
+		for (int i = 0; i < resourceCatalogProdStructures.size(); i++) 
+		{
+			cList.add(resourceCatalogProdStructures.get(i).getResourceClassSeqNo());
+		}
+		for (int i = 0; i < resourceCatalogProdStructures.size(); i++) 
+		{
+			cList.add(resourceCatalogProdStructures.get(i).getParResourceClassSeqNo());
+		}
+		}		
+		return cList;
 		},asyncExecutor);
 		 
-		return future;	
+		CopyOnWriteArrayList<Long> cList=null;
+		try {
+			cList = future.get();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return cList;	
 	}			
 }
