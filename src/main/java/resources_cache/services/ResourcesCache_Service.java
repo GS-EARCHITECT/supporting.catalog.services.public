@@ -59,12 +59,12 @@ public class ResourcesCache_Service implements IResourcesCache_Service
 	@Override
 	@Cacheable(value="resourcesCache",key = "new org.springframework.cache.interceptor.SimpleKey(#resCatSeqNo)")
 	@HystrixCommand(fallbackMethod = "getAllResources")    
-	public ArrayList<Long> getAllResourcesForCatalog(Long resCatSeqNo) throws InterruptedException, ExecutionException 
+	public CopyOnWriteArrayList<Long> getAllResourcesForCatalog(Long resCatSeqNo) throws InterruptedException, ExecutionException 
 	{
-		ArrayList<Long> resListFull=null;
+		CopyOnWriteArrayList<Long> resListFull=null;
 		// get resourceclassList from resource_catalog_prodstructure
-		CompletableFuture<ArrayList<Long>> future1 = CompletableFuture.supplyAsync(() -> {
-		ArrayList<Long> resList=null;
+		CompletableFuture<CopyOnWriteArrayList<Long>> future1 = CompletableFuture.supplyAsync(() -> {
+		CopyOnWriteArrayList<Long> resList=null;
 		try {
 			resList = this.getResourceClassList(resCatSeqNo);
 			logger.info("list is ? "+resList.size());
@@ -82,25 +82,25 @@ public class ResourcesCache_Service implements IResourcesCache_Service
 		return resListFull;
 	}
 	
-	private ArrayList<Long> getResourceClassList(Long resCatSeqNo) throws InterruptedException, ExecutionException 
+	private CopyOnWriteArrayList<Long> getResourceClassList(Long resCatSeqNo) throws InterruptedException, ExecutionException 
 	{
 		// get resourceclassList from resource_catalog_prodstructure
-		CompletableFuture<ArrayList<Long>> future1 = CompletableFuture.supplyAsync(() -> 
+		CompletableFuture<CopyOnWriteArrayList<Long>> future1 = CompletableFuture.supplyAsync(() -> 
 		{
-		ArrayList<Long> resCatList = resourcesCacheRepo.findResourceClassesForCatalog(resCatSeqNo);
+		CopyOnWriteArrayList<Long> resCatList = resourcesCacheRepo.findResourceClassesForCatalog(resCatSeqNo);
 		logger.info("res classes size is ? "+resCatList.size());
 		return resCatList;
 		},asyncExecutor);
 		
 		// get resources for resource classes in resourceclassList from resource_class_details
-		CompletableFuture<ArrayList<Long>> future2 = future1.whenComplete((input, exception) -> 
+		CompletableFuture<CopyOnWriteArrayList<Long>> future2 = future1.whenComplete((input, exception) -> 
 		{
 			logger.info("future 2 input res classes size is ? "+input.size());
             if (exception == null) 
             {
             	    CompletableFuture.supplyAsync(() -> 
             	    {            	    
-            	    ArrayList<Long> resList = resourcesCacheRepo.findResourcesForResourceClasses(input); 
+            	    CopyOnWriteArrayList<Long> resList = resourcesCacheRepo.findResourcesForResourceClasses(input); 
             		logger.info("res size is ? "+resList.size());
             		return resList;
             		},asyncExecutor);            	
@@ -110,7 +110,7 @@ public class ResourcesCache_Service implements IResourcesCache_Service
             }
         });
 		
-		ArrayList<Long> sList = future2.get();
+		CopyOnWriteArrayList<Long> sList = future2.get();
 						
 		return sList;
 }

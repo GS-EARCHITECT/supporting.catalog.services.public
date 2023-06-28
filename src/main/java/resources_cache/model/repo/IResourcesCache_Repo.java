@@ -23,8 +23,8 @@ public CompletableFuture<ArrayList<Long>> findLocationsForLocationsInLocationCla
 public CompletableFuture<ArrayList<Long>> findLocationsForLocationsInLocationClassesnoDTO(ArrayList<Long> locClassList);
 public CompletableFuture<ArrayList<Long>> findLocationClassesForCatalog(Long resCatSeqNo);
 public CompletableFuture<ArrayList<Long>> findLocationClassesForCatalognoDTO(Long resCatSeqNo);
-public ArrayList<Long> findResourcesForResourceClasses(ArrayList<Long> resClassList);
+public CopyOnWriteArrayList<Long> findResourcesForResourceClasses(CopyOnWriteArrayList<Long> resClassList);
 public CompletableFuture<ArrayList<Long>> findResourcesForResourceClassesnoDTO(ArrayList<Long> resClassList);
-public ArrayList<Long> findResourceClassesForCatalog(Long resCatSeqNo);
+public CopyOnWriteArrayList<Long> findResourceClassesForCatalog(Long resCatSeqNo);
 public ArrayList<Long> findResourceClassesForCatalogNoDto(Long resCatSeqNo);
 }

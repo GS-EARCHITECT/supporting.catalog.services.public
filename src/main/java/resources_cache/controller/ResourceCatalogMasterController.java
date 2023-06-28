@@ -1,6 +1,7 @@
 package resources_cache.controller;
 
 import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -24,12 +25,12 @@ public class ResourceCatalogMasterController {
 	private IResourcesCache_Service resourceCacheServ;
 
 	@GetMapping(value = "/getAllResourcesFromCache/{resCatSeqNo}", produces = { MediaType.APPLICATION_JSON_VALUE })
-	public ResponseEntity<ArrayList<Long>> getAllResourcesFromCache(@PathVariable Long resCatSeqNo) 
+	public ResponseEntity<CopyOnWriteArrayList<Long>> getAllResourcesFromCache(@PathVariable Long resCatSeqNo) 
 	{
 	//	DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
 		//Date date = new Date();
 	//	logger.info("hit at condition async : " + System.currentTimeMillis());
-		ArrayList<Long> resourceCatalogDTOs=null;
+		CopyOnWriteArrayList<Long> resourceCatalogDTOs=null;
 		try {
 			resourceCatalogDTOs = resourceCacheServ.getAllResourcesForCatalog(resCatSeqNo);
 			logger.info("in controller: "+resourceCatalogDTOs.size());
