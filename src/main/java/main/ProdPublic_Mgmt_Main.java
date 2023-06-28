@@ -10,12 +10,10 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @SpringBootApplication
 @EnableEurekaClient
-@EnableAsync
 @EntityScan(basePackages ={"cacheMgmt","compclasses_cache","location_classes_cache","pricerange_cache","ratings_cache", "resources_cache","resource_classes_cache"})
 @EnableJpaRepositories(basePackages ={"cacheMgmt","compclasses_cache","location_classes_cache","pricerange_cache","ratings_cache", "resources_cache","resource_classes_cache"})
 @ComponentScan(basePackages ={"cacheMgmt","compclasses_cache","location_classes_cache","pricerange_cache","ratings_cache", "resources_cache","resource_classes_cache"})

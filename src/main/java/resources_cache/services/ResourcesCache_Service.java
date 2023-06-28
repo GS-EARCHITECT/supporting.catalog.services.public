@@ -3,8 +3,10 @@ package resources_cache.services;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
@@ -14,6 +16,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 import org.springframework.context.annotation.ScopedProxyMode;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,7 +55,68 @@ public class ResourcesCache_Service implements IResourcesCache_Service
 	
 	@Autowired
 	private IResourceCatalogPriceRangeCache_Service resourceCatalogPriceRangeCacheServ; 
+
+	@Override
+	@Cacheable(value="resourcesCache",key = "new org.springframework.cache.interceptor.SimpleKey(#resCatSeqNo)")
+	@HystrixCommand(fallbackMethod = "getAllResources")    
+	public ArrayList<Long> getAllResourcesForCatalog(Long resCatSeqNo) throws InterruptedException, ExecutionException 
+	{
+		ArrayList<Long> resListFull=null;
+		// get resourceclassList from resource_catalog_prodstructure
+		CompletableFuture<ArrayList<Long>> future1 = CompletableFuture.supplyAsync(() -> {
+		ArrayList<Long> resList=null;
+		try {
+			resList = this.getResourceClassList(resCatSeqNo);
+			logger.info("list is ? "+resList.size());
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}			
+			return resList;
+		},asyncExecutor);
+		
+		resListFull = future1.get();
+		return resListFull;
+	}
 	
+	private ArrayList<Long> getResourceClassList(Long resCatSeqNo) throws InterruptedException, ExecutionException 
+	{
+		// get resourceclassList from resource_catalog_prodstructure
+		CompletableFuture<ArrayList<Long>> future1 = CompletableFuture.supplyAsync(() -> 
+		{
+		ArrayList<Long> resCatList = resourcesCacheRepo.findResourceClassesForCatalog(resCatSeqNo);
+		logger.info("res classes size is ? "+resCatList.size());
+		return resCatList;
+		},asyncExecutor);
+		
+		// get resources for resource classes in resourceclassList from resource_class_details
+		CompletableFuture<ArrayList<Long>> future2 = future1.whenComplete((input, exception) -> 
+		{
+			logger.info("future 2 input res classes size is ? "+input.size());
+            if (exception == null) 
+            {
+            	    CompletableFuture.supplyAsync(() -> 
+            	    {            	    
+            	    ArrayList<Long> resList = resourcesCacheRepo.findResourcesForResourceClasses(input); 
+            		logger.info("res size is ? "+resList.size());
+            		return resList;
+            		},asyncExecutor);            	
+            	
+            } else {
+            	logger.info("Resource Classes exception, No Result: " + input);
+            }
+        });
+		
+		ArrayList<Long> sList = future2.get();
+						
+		return sList;
+}
+	
+	
+	/*
 	@Override
 	@Cacheable(value="resourcesCache",key = "new org.springframework.cache.interceptor.SimpleKey(#resCatSeqNo)")
 	@HystrixCommand(fallbackMethod = "getAllResources")    
@@ -260,10 +324,32 @@ public class ResourcesCache_Service implements IResourcesCache_Service
 			
 				// get resources for matching prodservseqnos in SUPPLIER_PRODSERV_details & SUPPLIER_PRODSERV_prices & priceRange 
 		
-				List<Long> allList = Stream.of(future2, future5, future8, future9, future10).map(CompletableFuture::join).flatMap(List::stream).collect(Collectors.toList());		
-				return (ArrayList<Long>) allList;				
+			//CompletableFuture<Void> futureResult = CompletableFuture.allOf(future1, future2, future3, future4, future5, future6, future7, future8, future9, future10);
+			
+			
+			 List<CompletableFuture<ArrayList<Long>>> completableFutures = Arrays.asList(future1, future2, future3, future4, future5, future6, future7, future8, future9, future10);
+
+		       CompletableFuture<Void> resultantCf = CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture[completableFutures.size()]));
+
+		        CompletableFuture<Object> allResults = resultantCf.thenApply(t -> completableFutures.stream().map(CompletableFuture::join).collect(Collectors.toList()));
+			
+		        Thread.sleep(1000);
+		        
+		        @SuppressWarnings("unchecked")
+				ArrayList<Long> gg = (ArrayList<Long>) allResults.get();
+		        		        
+		        logger.info("in service :");
+		        for (int i = 0; i < gg.size(); i++) 
+		        {
+		        logger.info("result :"+gg.get(i));
+				}
+		        
+				//List<Long> allList = Stream.of(future2, future5, future8, future9, future10).map(CompletableFuture::join).flatMap(List::stream).collect(Collectors.toList());		
+				return gg;				
 				
 }
+
+*/
 
 	public String getAllResources() 
 	{

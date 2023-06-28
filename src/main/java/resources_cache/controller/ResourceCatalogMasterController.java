@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 @RequestMapping("/resourcesCacheManagement")
 public class ResourceCatalogMasterController {
 
-//	private static final Logger logger = LoggerFactory.getLogger(ResourceCatalogMasterController.class);
+	private static final Logger logger = LoggerFactory.getLogger(ResourceCatalogMasterController.class);
 
 	@Autowired
 	private IResourcesCache_Service resourceCacheServ;
@@ -32,6 +32,13 @@ public class ResourceCatalogMasterController {
 		ArrayList<Long> resourceCatalogDTOs=null;
 		try {
 			resourceCatalogDTOs = resourceCacheServ.getAllResourcesForCatalog(resCatSeqNo);
+			logger.info("in controller: "+resourceCatalogDTOs.size());
+			
+	        for (int i = 0; i < resourceCatalogDTOs.size(); i++) 
+	        {
+	        logger.info("result :"+resourceCatalogDTOs.get(i));
+			}
+			
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

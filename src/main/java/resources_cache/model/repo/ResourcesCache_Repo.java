@@ -2,17 +2,21 @@ package resources_cache.model.repo;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.hibernate.annotations.Synchronize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+
+import javax.transaction.Transactional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Repository;
 import resources_cache.model.dto.ResourceCatalogProdStructure_DTO;
 import resources_cache.model.master.ResourceCacheMaster;
@@ -23,8 +27,7 @@ import resources_cache.model.dto.PlaceClassDetail_DTO;;
 
 @Repository("resourcesCacheRepo")
 public class ResourcesCache_Repo implements IResourcesCache_Repo {
-	// private static final Logger logger =
-	// LoggerFactory.getLogger(ResourceCatalogReadMasterRepo.class);
+ private static final Logger logger = LoggerFactory.getLogger(ResourcesCache_Repo.class);
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
@@ -35,7 +38,6 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 	@Autowired
 	private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-	@Async
 	public CompletableFuture<ArrayList<ResourceCacheMaster>> findAllResourcesForConditions(Integer parmLength,
 			ArrayList<Long> cList, ArrayList<Long> rList, String catalog) {
 		MapSqlParameterSource mapSqlParameterSource = new MapSqlParameterSource();
@@ -102,8 +104,7 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 	}
 
 	// noDTO basis - get resourceclassList from resource_catalog_prodstructure
-	@Async
-	public CompletableFuture<ArrayList<Long>> findResourceClassesForCatalogNoDto(Long resCatSeqNo) {
+	public ArrayList<Long> findResourceClassesForCatalogNoDto(Long resCatSeqNo) {
 		String qryString = "select resource_class_seq_no from resource_catalog_prodstructure where resource_catalog_seq_no = :resCatSeqNo";
 		String qryString2 = "select par_resource_class_seq_no from resource_catalog_prodstructure where resource_catalog_seq_no = :resCatSeqNo";
 		CompletableFuture<ArrayList<Long>> future = CompletableFuture.supplyAsync(() -> {
@@ -120,14 +121,25 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 				tList.addAll(lResourceCatalogProdStructure_DTOs2);
 			}
 			return tList;
-		});
+		},asyncExecutor);
+		
+		ArrayList<Long> tList2=null;
+		try {
+			tList2 = future.get();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
-		return future;
+		return tList2;
 	}
 
 	// dto basis - get resourceclassList from resource_catalog_prodstructure
-	@Async
-	public CompletableFuture<ArrayList<Long>> findResourceClassesForCatalog(Long resCatSeqNo) {
+	@Transactional
+	public ArrayList<Long> findResourceClassesForCatalog(Long resCatSeqNo) {
 		MapSqlParameterSource mapSqlParameterSource = new MapSqlParameterSource();
 		mapSqlParameterSource.addValue("resCatSeqNo", resCatSeqNo);
 		String qryString = "select * from resource_catalog_prodstructure where resource_catalog_seq_no = :resCatSeqNo";
@@ -138,29 +150,47 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 					.query(qryString, mapSqlParameterSource,
 							(rs, rowNum) -> new ResourceCatalogProdStructure_DTO(rs.getLong("resource_class_seq_no"),
 									rs.getLong("par_resource_class_seq_no"), rs.getLong("resource_catalog_seq_no")));
-
+			
 			if (lResourceCatalogProdStructure_DTOs != null && lResourceCatalogProdStructure_DTOs.size() > 0) {
 				resourceclassList = new ArrayList<Long>();
-				for (int i = 0; i < lResourceCatalogProdStructure_DTOs.size(); i++) {
-					if (lResourceCatalogProdStructure_DTOs.get(i).getParResourceClassSeqNo() != null) {
-						resourceclassList.add(lResourceCatalogProdStructure_DTOs.get(i).getParResourceClassSeqNo());
+				
+				for (int i = 0; i < lResourceCatalogProdStructure_DTOs.size(); i++)
+				{
+					if (lResourceCatalogProdStructure_DTOs.get(i).getParResourceClassSeqNo() != null) 
+					{
+					resourceclassList.add(lResourceCatalogProdStructure_DTOs.get(i).getParResourceClassSeqNo());
 					}
+				}
 
-					if (lResourceCatalogProdStructure_DTOs.get(i).getResourceClassSeqNo() != null) {
-						resourceclassList.add(lResourceCatalogProdStructure_DTOs.get(i).getResourceClassSeqNo());
+				for (int i=0; i < lResourceCatalogProdStructure_DTOs.size(); i++)
+				{
+					if (lResourceCatalogProdStructure_DTOs.get(i).getResourceClassSeqNo() != null) 
+					{
+					resourceclassList.add(lResourceCatalogProdStructure_DTOs.get(i).getResourceClassSeqNo());
 					}
 				}
 			}
 
 			return resourceclassList;
-		});
+		},asyncExecutor);
+		
+		ArrayList<Long> resourceclassList2=null;;
+		try {
+			resourceclassList2 = future.get();			
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
-		return future;
+		return resourceclassList2;
 	}
 
 	// noDTo basis - get resources for resource classes in resourceclassList from
 	// resource_class_details
-	@Async
+
 	public CompletableFuture<ArrayList<Long>> findResourcesForResourceClassesnoDTO(ArrayList<Long> resClassList) {
 		CompletableFuture<ArrayList<Long>> future = CompletableFuture.supplyAsync(() -> {
 			List<Long> lResSeqNos = jdbcTemplate.queryForList(
@@ -168,15 +198,16 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 					Long.class, resClassList);
 			return (ArrayList<Long>) lResSeqNos;
 		});
+		
 		return future;
 	}
 
 	// DTO basis - get resources for resource classes in resourceclassList from
 	// resource_class_details
-	@Async
-	public CompletableFuture<ArrayList<Long>> findResourcesForResourceClasses(ArrayList<Long> resClassList) {
+	@Transactional
+	public ArrayList<Long> findResourcesForResourceClasses(ArrayList<Long> resClassList) {
 		MapSqlParameterSource mapSqlParameterSource = new MapSqlParameterSource();
-		mapSqlParameterSource.addValue("resClassList",resClassList);
+		mapSqlParameterSource.addValue("resClassList",resClassList);		
 		String qryString = "select * from resource_class_details where resource_class_seq_no in (:resClassList)";
 		CompletableFuture<ArrayList<Long>> future = CompletableFuture.supplyAsync(() -> {
 			ArrayList<Long> resourceList = null;
@@ -193,12 +224,23 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 				}
 			}
 			return resourceList;
-		});
-		return future;
+		},asyncExecutor);
+		
+		ArrayList<Long> resourceList2=null;
+		try {
+			resourceList2 = future.get();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return resourceList2;
 	}
 
 	// noDTo basis - get locationClassList from resource_catalog_locstructure
-	@Async
+
 	public CompletableFuture<ArrayList<Long>> findLocationClassesForCatalognoDTO(Long resCatSeqNo) {
 		String qryString = "select place_class_seq_no from resource_catalog_locstructure where resource_catalog_seq_no = :resCatSeqNo";
 
@@ -210,7 +252,7 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 	}
 
 	// DTo basis - get locationClassList from resource_catalog_locstructure
-	@Async
+	
 	public CompletableFuture<ArrayList<Long>> findLocationClassesForCatalog(Long resCatSeqNo) {
 		MapSqlParameterSource mapSqlParameterSource = new MapSqlParameterSource();
 		mapSqlParameterSource.addValue("resCatSeqNo", resCatSeqNo);
@@ -244,7 +286,7 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 
 	// noDTo basis - get locationsList for locations in locationClassList from
 	// place_class_details
-	@Async
+	
 	public CompletableFuture<ArrayList<Long>> findLocationsForLocationsInLocationClassesnoDTO(
 			ArrayList<Long> locClassList) {
 		String qryString = "select place_seq_no from place_class_details where place_class_seq_no in (:locClassList)";
@@ -257,7 +299,7 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 
 	// DTO basis - get locationsList for locations in locationClassList from
 	// place_class_details
-	@Async
+	
 	public CompletableFuture<ArrayList<Long>> findLocationsForLocationsInLocationClasses(ArrayList<Long> locClassList) {
 		MapSqlParameterSource mapSqlParameterSource = new MapSqlParameterSource();
 		mapSqlParameterSource.addValue("locClassList",locClassList);
@@ -282,7 +324,7 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 	}
 
 	// noDTO basis - get resources for locationsList from resource_location_master
-	@Async
+	
 	public CompletableFuture<ArrayList<Long>> findResourcesForLocationsnoDTO(ArrayList<Long> locList) {
 		String qryString = "select resource_seq_no from resource_location_master where location_seq_no in (:locList)";
 		CompletableFuture<ArrayList<Long>> future = CompletableFuture.supplyAsync(() -> {
@@ -293,7 +335,7 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 	}
 
 	// DTO basis - get resources for locationsList from resource_location_master
-	@Async
+	
 	public CompletableFuture<ArrayList<Long>> findResourcesForLocations(ArrayList<Long> locList) {
 		MapSqlParameterSource mapSqlParameterSource = new MapSqlParameterSource();
 		mapSqlParameterSource.addValue("locList",locList);
@@ -320,19 +362,30 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 	}
 
 	// no DTO basis - get supplierclassList from resource_catalog_compclasses
-	@Async
-	public CompletableFuture<ArrayList<Long>> findSuppliersForResourceCatalog(Long resCatSeqNo) {
+	
+	public ArrayList<Long> findSuppliersForResourceCatalog(Long resCatSeqNo) {
 		String qryString = "select company_class_seq_no from resource_catalog_compclasses where resource_catalog_seq_no = :resCatSeqNo";
 		CompletableFuture<ArrayList<Long>> future = CompletableFuture.supplyAsync(() -> {
 			List<Long> compClassList = jdbcTemplate.queryForList(qryString, Long.class, resCatSeqNo);
 			return (ArrayList<Long>) compClassList;
 		});
-		return future;
+		
+		List<Long> compClassList2=null;
+		try {
+			compClassList2 = future.get();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return (ArrayList<Long>) compClassList2;
 	}
 
 	// noDTO - get suppliersList for suppliers in supplierClassList from
 	// supplier_class_details
-	@Async
+	
 	public CompletableFuture<ArrayList<Long>> findSupplierListForSupplierClasses(ArrayList<Long> suppClassList) {
 		String qryString = "select supplier_seq_no from supplier_class_details where supplier_class_seq_no in (:suppClassList)";
 		MapSqlParameterSource mapSqlParameterSource = new MapSqlParameterSource();
@@ -345,7 +398,7 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 	}
 
 	// noDTO - get resources for suppliersList from SUPPLIER_PRODSERV_details
-	@Async
+	
 	public CompletableFuture<ArrayList<Long>> findResourcesForSuppliers(ArrayList<Long> suppList) {
 		String qryString = "select resource_seq_no from supplier_prodserv_details where supplier_seq_no in (:suppList)";
 		MapSqlParameterSource mapSqlParameterSource = new MapSqlParameterSource();
@@ -358,7 +411,7 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 	}
 
 	// noDTO - get ratingsList from resource_catalog_ratings
-	@Async
+	
 	public ArrayList<Float> findRatingsForResourceCatalog(Long resCatSeqNo) {
 		String qryString = "select rating from resource_catalog_ratings where resource_catalog_seq_no = :resCatSeqNo";
 		ArrayList<Float> rateList2 = null;
@@ -382,7 +435,7 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 
 	// noDTO - resources for matching prodservseqnos in SUPPLIER_PRODSERV_details &
 	// SUPPLIER_PRODSERV_ratings & ratingsList
-	@Async
+	
 	public ArrayList<Long> findResourcesForRatings(ArrayList<Float> ratingsList) {
 		String qryString = "select a.resource_seq_no from supplier_prodserv_details a, supplier_prodserv_ratings b where (a.SUPP_PRODSERV_SEQ_NO = b.SUPP_PRODSERV_SEQ_NO and b.rating in (:ratingsList))";
 		ArrayList<Long> resList2 = null;
@@ -406,7 +459,7 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 	}
 
 	// noDTO - get priceRange from resource_catalog_pricerange
-	@Async
+	
 	public Float findPriceRangeLowForResourceCatalog(Long resCatSeqNo) {
 		String qryString = "select price_fr from resource_catalog_pricerange where rownum=1 and resource_catalog_seq_no = :resCatSeqNo";
 		Float lowPrice = null;
@@ -427,7 +480,7 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 		return lowPrice;
 	}
 
-	@Async
+	
 	public Float findPriceRangeHighForResourceCatalog(Long resCatSeqNo) {
 		String qryString = "select price_to from resource_catalog_pricerange where rownum=1 and resource_catalog_seq_no = :resCatSeqNo";
 		Float hiPrice = null;		
@@ -450,7 +503,7 @@ public class ResourcesCache_Repo implements IResourcesCache_Repo {
 
 	// noDTO - get resources for matching prodservseqnos in
 	// SUPPLIER_PRODSERV_details & SUPPLIER_PRODSERV_prices & priceRange
-	@Async
+	
 	public ArrayList<Long> findResourcesForPriceRange(Float lPrice, Float hPrice) 
 	{
 		String qryString = "select a.resource_seq_no from supplier_prodserv_details a, supplier_prodserv_prices b where a.SUPP_PRODSERV_SEQ_NO = b.SUPP_PRODSERV_SEQ_NO and b.amount >= :lPrice and b.amount <= :hPrice";
