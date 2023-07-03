@@ -3,6 +3,7 @@ package resources_cache.services;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -96,9 +97,16 @@ public class ResourcesCache_Service implements IResourcesCache_Service
 		return allList;
 		},asyncExecutor);
 			
-		ArrayList<Long> cList = null;
-		cList = (ArrayList<Long>) futureC.get();
-		return cList;
+		ArrayList<Long> cList = (ArrayList<Long>) futureC.get();
+		ArrayList<Long> cNewList = new ArrayList<Long>(); 
+		
+		synchronized (cList) 
+		{		
+		HashSet<Long> hset = new HashSet<Long>(cList);
+		cNewList.addAll(hset);			
+		}
+		
+		return cNewList;
 	}
 	
 	private CompletableFuture<ArrayList<Long>> getResourcesForResourceClassList(Long resCatSeqNo) throws InterruptedException, ExecutionException 
