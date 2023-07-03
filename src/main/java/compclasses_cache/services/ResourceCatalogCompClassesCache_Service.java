@@ -1,10 +1,12 @@
 package compclasses_cache.services;
 
+import org.bouncycastle.mime.MimeWriter;
 import org.slf4j.Logger;
 import java.util.Optional;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
@@ -17,6 +19,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
+import antlr.CppCodeGenerator;
 import compclasses_cache.model.master.ResourceCatalogCompClassesCache;
 import compclasses_cache.model.repo.IResourceCatalogCompClassesCache_Repo;
 
@@ -37,27 +41,15 @@ public class ResourceCatalogCompClassesCache_Service implements IResourceCatalog
 
 	@Override	
 	@Cacheable(value="compClassesCache",key = "new org.springframework.cache.interceptor.SimpleKey(#resCatSeqNo)")
-	public ArrayList<ResourceCatalogCompClassesCache> getAllResourceCatalogCompClasses(Long resCatSeqNo)
+	public CopyOnWriteArrayList<ResourceCatalogCompClassesCache> getAllResourceCatalogCompClasses(Long resCatSeqNo)
 			throws InterruptedException, ExecutionException 
 	{
-
-		CompletableFuture<ArrayList<ResourceCatalogCompClassesCache>> future = CompletableFuture.supplyAsync(() -> {			
-			CompletableFuture<ArrayList<ResourceCatalogCompClassesCache>> cresCatList = resourceCatalogCompClassesCacheRepo.findResourceCatalogCompClasses(resCatSeqNo);
-			ArrayList<ResourceCatalogCompClassesCache> cresCatList2 = null;
-			try {
-				cresCatList2 = cresCatList.get();
-				
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (ExecutionException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			return cresCatList2;
+		CompletableFuture<CopyOnWriteArrayList<ResourceCatalogCompClassesCache>> future = CompletableFuture.supplyAsync(() -> 
+		{			
+			CopyOnWriteArrayList<ResourceCatalogCompClassesCache> cresCatList = resourceCatalogCompClassesCacheRepo.findResourceCatalogCompClasses(resCatSeqNo);
+			return cresCatList;
 		},asyncExecutor);
 
 		return future.get();
-
 	}
 }

@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.ctc.wstx.shaded.msv_core.reader.Controller;
+import com.netflix.infix.lang.infix.antlr.EventFilterParser.in_predicate_return;
+
 import pricerange_cache.model.master.ResourceCatalogPriceRangeCache;
 import pricerange_cache.services.IResourceCatalogPriceRangeCache_Service;
 
@@ -22,17 +25,18 @@ import org.slf4j.LoggerFactory;
 public class ResourceCatalogPriceRangeCaching_Controller 
 {
 
-//	private static final Logger logger = LoggerFactory.getLogger(ResourceCatalogMasterController.class);
+	private static final Logger logger = LoggerFactory.getLogger(ResourceCatalogPriceRangeCaching_Controller.class);
 
 	@Autowired
 	private IResourceCatalogPriceRangeCache_Service resourceCatalogPriceRangeCacheServ;
 
-	@GetMapping(value = "/getAllResourceCatalogPriceRangesFromCache/{resCatSeqNo}", produces = { MediaType.APPLICATION_JSON_VALUE })
-	public ResponseEntity<ArrayList<ResourceCatalogPriceRangeCache>> getAllResourceCatalogPriceRangesFromCache(@PathVariable Long resCatSeqNo) 
+	@GetMapping(value = "/getResourceCatalogPriceRangesFromCache/{resCatSeqNo}", produces = { MediaType.APPLICATION_JSON_VALUE })
+	public ResponseEntity<ResourceCatalogPriceRangeCache> getAllResourceCatalogPriceRangesFromCache(@PathVariable Long resCatSeqNo) 
 	{
-		ArrayList<ResourceCatalogPriceRangeCache> resourceCatalogDTOs=null;
+		ResourceCatalogPriceRangeCache resourceCatalogDTOs=null;
 		try {
 			resourceCatalogDTOs = resourceCatalogPriceRangeCacheServ.getAllResourceCatalogPriceRange(resCatSeqNo);
+			logger.info("in  Controller :");
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

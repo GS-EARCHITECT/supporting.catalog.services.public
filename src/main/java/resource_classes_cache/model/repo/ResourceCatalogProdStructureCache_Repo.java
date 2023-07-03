@@ -1,8 +1,8 @@
 package resource_classes_cache.model.repo;
 
-import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
@@ -11,6 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import resource_classes_cache.model.master.ResourceCatalogProdStructureCache;
 
 @Repository("resourceCatalogProdStructureRepo")
@@ -24,18 +27,17 @@ public class ResourceCatalogProdStructureCache_Repo implements IResourceCatalogP
 	@Autowired
 	private Executor asyncExecutor;
 	
-	public CopyOnWriteArrayList<Long> findResourceCatalogProdStructures(Long resCatSeqNo)
+	@Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.READ_COMMITTED)
+	public CopyOnWriteArrayList<ResourceCatalogProdStructureCache> findResourceCatalogProdStructures(Long resCatSeqNo)
 	{		
 		
-		CompletableFuture<CopyOnWriteArrayList<Long>> future = CompletableFuture.supplyAsync(() -> 
+		CompletableFuture<CopyOnWriteArrayList<ResourceCatalogProdStructureCache>> future = CompletableFuture.supplyAsync(() -> 
 		{
 		MapSqlParameterSource mapSqlParameterSource = new MapSqlParameterSource();
-		mapSqlParameterSource.addValue("resCatSeqNo", resCatSeqNo);
-		CopyOnWriteArrayList<Long> cList = null;
-		
+		mapSqlParameterSource.addValue("resCatSeqNo", resCatSeqNo);		
 		String qryString = "select * from resource_catalog_prodstructure a where (a.resource_catalog_seq_no = :resCatSeqNo)";
-		ArrayList<ResourceCatalogProdStructureCache> resourceCatalogProdStructures =  
-				(ArrayList<ResourceCatalogProdStructureCache>)namedParameterJdbcTemplate.query
+		List<ResourceCatalogProdStructureCache> resourceCatalogProdStructures =  
+				namedParameterJdbcTemplate.query
 				(
 				 qryString,mapSqlParameterSource,
 	                (rs, rowNum) ->
@@ -46,22 +48,12 @@ public class ResourceCatalogProdStructureCache_Repo implements IResourceCatalogP
 	                        )
 	        );
 		
-		if(resourceCatalogProdStructures!=null)
-		{
-		cList = new CopyOnWriteArrayList<Long>();
-		for (int i = 0; i < resourceCatalogProdStructures.size(); i++) 
-		{
-			cList.add(resourceCatalogProdStructures.get(i).getResourceClassSeqNo());
-		}
-		for (int i = 0; i < resourceCatalogProdStructures.size(); i++) 
-		{
-			cList.add(resourceCatalogProdStructures.get(i).getParResourceClassSeqNo());
-		}
-		}		
+		CopyOnWriteArrayList<ResourceCatalogProdStructureCache> cList= new CopyOnWriteArrayList<ResourceCatalogProdStructureCache>();
+		cList.addAll(resourceCatalogProdStructures);
 		return cList;
 		},asyncExecutor);
 		 
-		CopyOnWriteArrayList<Long> cList=null;
+		CopyOnWriteArrayList<ResourceCatalogProdStructureCache> cList=null;
 		try {
 			cList = future.get();
 		} catch (InterruptedException e) {

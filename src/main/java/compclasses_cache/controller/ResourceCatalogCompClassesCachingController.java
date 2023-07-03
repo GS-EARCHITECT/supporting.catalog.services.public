@@ -1,6 +1,7 @@
 package compclasses_cache.controller;
 
 import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -28,9 +29,9 @@ public class ResourceCatalogCompClassesCachingController
 	private IResourceCatalogCompClassesCache_Service resourceCatalogCompClassesCacheServ;
 
 	@GetMapping(value = "/getAllResourceCatalogCompClassesFromCache/{resCatSeqNo}", produces = { MediaType.APPLICATION_JSON_VALUE })
-	public ResponseEntity<ArrayList<ResourceCatalogCompClassesCache>> getAllResourceCatalogCompClassesFromCache(@PathVariable Long resCatSeqNo) 
+	public ResponseEntity<CopyOnWriteArrayList<ResourceCatalogCompClassesCache>> getAllResourceCatalogCompClassesFromCache(@PathVariable Long resCatSeqNo) 
 	{
-		ArrayList<ResourceCatalogCompClassesCache> resourceCatalogDTOs=null;
+		CopyOnWriteArrayList<ResourceCatalogCompClassesCache> resourceCatalogDTOs=null;
 		try {
 			resourceCatalogDTOs = resourceCatalogCompClassesCacheServ.getAllResourceCatalogCompClasses(resCatSeqNo);
 		} catch (InterruptedException e) {

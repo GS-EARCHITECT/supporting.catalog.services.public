@@ -1,6 +1,6 @@
 package location_classes_cache.controller;
 
-import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -26,9 +26,9 @@ public class ResourceCatalogLocaStructureCachingController
 	private I_ResourceCatalogLocaStructureCache_Service resourceCatalogLocaStructureServ;
 
 	@GetMapping(value = "/getAllResourceCatalogLocaStructuresFromCache/{resCatSeqNo}", produces = { MediaType.APPLICATION_JSON_VALUE })
-	public ResponseEntity<ArrayList<ResourceCatalogLocaStructureCache>> getAllResourceCatalogLocaStructuresFromCache(@PathVariable Long resCatSeqNo) 
+	public ResponseEntity<CopyOnWriteArrayList<ResourceCatalogLocaStructureCache>> getAllResourceCatalogLocaStructuresFromCache(@PathVariable Long resCatSeqNo) 
 	{
-		ArrayList<ResourceCatalogLocaStructureCache> resourceCatalogDTOs=null;
+		CopyOnWriteArrayList<ResourceCatalogLocaStructureCache> resourceCatalogDTOs=null;
 		try {
 			resourceCatalogDTOs = resourceCatalogLocaStructureServ.getAllResourceCatalogLocaStructures(resCatSeqNo);
 		} catch (InterruptedException e) {

@@ -3,8 +3,8 @@ package location_classes_cache.services;
 import org.slf4j.Logger;
 import java.util.Optional;
 import org.slf4j.LoggerFactory;
-import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,27 +32,17 @@ public class ResourceCatalogLocaStructureCache_Service implements I_ResourceCata
 	@Autowired
 	private Executor asyncExecutor;
 
-	// abstract public ArrayList<Long> getAllResourcesForLocaStructures();
+	// abstract public CopyOnWriteArrayList<Long> getAllResourcesForLocaStructures();
 
 	@Override	
 	@Cacheable(value="locaStructureCache",key = "new org.springframework.cache.interceptor.SimpleKey(#resCatSeqNo)")
-	public ArrayList<ResourceCatalogLocaStructureCache> getAllResourceCatalogLocaStructures(Long resCatSeqNo)
+	public CopyOnWriteArrayList<ResourceCatalogLocaStructureCache> getAllResourceCatalogLocaStructures(Long resCatSeqNo)
 			throws InterruptedException, ExecutionException 
 	{
-		CompletableFuture<ArrayList<ResourceCatalogLocaStructureCache>> future = CompletableFuture.supplyAsync(() ->
+		CompletableFuture<CopyOnWriteArrayList<ResourceCatalogLocaStructureCache>> future = CompletableFuture.supplyAsync(() ->
 		{			
-		CompletableFuture<ArrayList<ResourceCatalogLocaStructureCache>> cresCatList = resourceCatalogLocaStructureRepo.findResourceCatalogLocaStructures(resCatSeqNo);
-		ArrayList<ResourceCatalogLocaStructureCache> cresCatList2 = null; 
-		try {
-			cresCatList2 = cresCatList.get();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ExecutionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return cresCatList2;
+		CopyOnWriteArrayList<ResourceCatalogLocaStructureCache> cresCatList = resourceCatalogLocaStructureRepo.findResourceCatalogLocaStructures(resCatSeqNo);
+		return cresCatList;
 		},asyncExecutor);
 
 		return future.get();

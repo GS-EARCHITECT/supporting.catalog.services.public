@@ -3,7 +3,6 @@ package resources_cache.services;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -16,15 +15,19 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 import org.springframework.context.annotation.ScopedProxyMode;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import compclasses_cache.services.IResourceCatalogCompClassesCache_Service;
+import location_classes_cache.model.master.ResourceCatalogLocaStructureCache;
 import location_classes_cache.services.I_ResourceCatalogLocaStructureCache_Service;
 import pricerange_cache.services.IResourceCatalogPriceRangeCache_Service;
 import ratings_cache.services.IResourceCatalogRatingsCache_Service;
+import compclasses_cache.model.master.ResourceCatalogCompClassesCache;
+import resource_classes_cache.model.master.ResourceCatalogProdStructureCache;
+import ratings_cache.model.master.ResourceCatalogRatingsCache;
+import pricerange_cache.model.master.ResourceCatalogPriceRangeCache;
 import resource_classes_cache.services.*;
 import resources_cache.model.repo.*;
 
@@ -56,44 +59,74 @@ public class ResourcesCache_Service implements IResourcesCache_Service
 	@Autowired
 	private IResourceCatalogPriceRangeCache_Service resourceCatalogPriceRangeCacheServ; 
 
+	@SuppressWarnings("unchecked")
 	@Override
 	@Cacheable(value="resourcesCache",key = "new org.springframework.cache.interceptor.SimpleKey(#resCatSeqNo)")
 	@HystrixCommand(fallbackMethod = "getAllResources")    
-	public CopyOnWriteArrayList<Long> getAllResourcesForCatalog(Long resCatSeqNo) throws InterruptedException, ExecutionException 
+	public List<Long> getAllResourcesForCatalog(Long resCatSeqNo) throws InterruptedException, ExecutionException 
 	{
-		CopyOnWriteArrayList<Long> resListFull=null;
+		CompletableFuture<List<Long>> futureC = CompletableFuture.supplyAsync(() -> 
+		{
 		// get resourceclassList from resource_catalog_prodstructure
-		CompletableFuture<CopyOnWriteArrayList<Long>> future1 = CompletableFuture.supplyAsync(() -> {
-		CopyOnWriteArrayList<Long> resList=null;
+		CopyOnWriteArrayList<Long> resList = new CopyOnWriteArrayList<Long>();
+		List<Long> gg = null;
+		CompletableFuture<ArrayList<Long>> resFuture=null;
+		CompletableFuture<ArrayList<Long>> locFuture=null;
+		CompletableFuture<ArrayList<Long>> cmpFuture=null;
+		CompletableFuture<ArrayList<Long>> rateFuture=null;
+		CompletableFuture<ArrayList<Long>> prnFuture=null;
+						
 		try {
-			resList = this.getResourceClassList(resCatSeqNo);
-		} catch (InterruptedException e) {
+			resFuture = this.getResourcesForResourceClassList(resCatSeqNo);
+			locFuture=this.getResourcesForLocationClassList(resCatSeqNo);
+			cmpFuture=getResourcesForSuppliers(resCatSeqNo);
+			rateFuture=getResourcesForRatings(resCatSeqNo);
+			prnFuture=getResourcesForPriceRange(resCatSeqNo);
+		} catch (InterruptedException e1) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ExecutionException e) {
+			e1.printStackTrace();
+		} catch (ExecutionException e1) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}			
-			return resList;
+			e1.printStackTrace();
+		}
+		       
+		       CompletableFuture<Void> futureResult = CompletableFuture.allOf(resFuture,locFuture, cmpFuture, rateFuture, prnFuture);
+		       ArrayList<Long> allList = (ArrayList<Long>) Stream.of(resFuture,locFuture, cmpFuture, rateFuture, prnFuture).map(CompletableFuture::join).flatMap(List::stream).collect(Collectors.toList());
+		       
+		return allList;
 		},asyncExecutor);
-		
-		resListFull = future1.get();
-		return resListFull;
+			
+		ArrayList<Long> cList = null;
+		cList = (ArrayList<Long>) futureC.get();
+		return cList;
 	}
 	
-	private CopyOnWriteArrayList<Long> getResourceClassList(Long resCatSeqNo) throws InterruptedException, ExecutionException 
+	private CompletableFuture<ArrayList<Long>> getResourcesForResourceClassList(Long resCatSeqNo) throws InterruptedException, ExecutionException 
 	{
 		// get resourceclassList from resource_catalog_prodstructure
 		CompletableFuture<CopyOnWriteArrayList<Long>> future1 = CompletableFuture.supplyAsync(() -> 
 		{
-		CopyOnWriteArrayList<Long> resCatList=null;
-		try {
-		resCatList = resourceCatalogProdStructureCacheServ.getAllResourceCatalogProdStructures(resCatSeqNo);
-		for (int i = 0; i < resCatList.size(); i++) 
-		{
-		logger.info("res class is : "+resCatList.get(i));	
-		}
+		CopyOnWriteArrayList<Long> resCatList=new CopyOnWriteArrayList<Long>();
 		
+		try {
+			CopyOnWriteArrayList<ResourceCatalogProdStructureCache> lResourceCatalogProdStructure_DTOs = resourceCatalogProdStructureCacheServ.getAllResourceCatalogProdStructures(resCatSeqNo);
+		
+		if (lResourceCatalogProdStructure_DTOs != null && lResourceCatalogProdStructure_DTOs.size() > 0) 
+		{
+			for (int i = 0; i < lResourceCatalogProdStructure_DTOs.size(); i++) 
+			{
+				if (lResourceCatalogProdStructure_DTOs.get(i).getParResourceClassSeqNo() != null) {
+					resCatList.add(lResourceCatalogProdStructure_DTOs.get(i).getParResourceClassSeqNo());
+				}
+			}
+
+			for (int i = 0; i < lResourceCatalogProdStructure_DTOs.size(); i++) {
+				if (lResourceCatalogProdStructure_DTOs.get(i).getResourceClassSeqNo() != null) {
+					resCatList.add(lResourceCatalogProdStructure_DTOs.get(i).getResourceClassSeqNo());
+				}
+			}
+		}
+
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -101,268 +134,295 @@ public class ResourcesCache_Service implements IResourcesCache_Service
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}		
+
 		return resCatList;
 		},asyncExecutor);
 		
 		// get resources for resource classes in resourceclassList from resource_class_details
-		CompletableFuture<CopyOnWriteArrayList<Long>> future2 = future1.whenComplete((input, exception) -> 
+		CompletableFuture<ArrayList<Long>> cc = future1.thenApplyAsync((input) -> 
 		{
-            if (exception == null) 
+			CopyOnWriteArrayList<Long> resList = null;
+			ArrayList<Long> resLst = new ArrayList<Long>();
+		    
+			if (input!= null) 
             {
-            	    CompletableFuture.supplyAsync(() -> 
-            	    {            	    
-            	    CopyOnWriteArrayList<Long> resClList = resourcesCacheRepo.findResourcesForResourceClasses(input); 
-                   	return resClList;
-            		},asyncExecutor);            	
-            	
-            } else {
-            	logger.info("Resource Classes exception, No Result: " + input);
+		   	    resList = resourcesCacheRepo.findResourcesForResourceClasses(input);
             }
-        });
+		    
+			synchronized (resLst) 
+			{
+			for (int i = 0; i < resList.size(); i++) 
+			{
+			resLst.add(resList.get(i));	
+			}	
+			}
+		    
+		    return resLst;
+		},asyncExecutor);
 		
-		CopyOnWriteArrayList<Long> slList = future2.get();
 						
-		return slList;
+		return cc;
 }
 	
 	
-	/*
-	@Override
-	@Cacheable(value="resourcesCache",key = "new org.springframework.cache.interceptor.SimpleKey(#resCatSeqNo)")
-	@HystrixCommand(fallbackMethod = "getAllResources")    
-	public ArrayList<Long> getAllResourcesForCatalog(Long resCatSeqNo) throws InterruptedException, ExecutionException 
+	// get locationClassList from resource_catalog_locstructure
+	private CompletableFuture<ArrayList<Long>> getResourcesForLocationClassList(Long resCatSeqNo) throws InterruptedException, ExecutionException 
+	{	
+	CompletableFuture<CopyOnWriteArrayList<Long>> future3 = CompletableFuture.supplyAsync(() -> 
 	{
-		// get resourceclassList from resource_catalog_prodstructure
-		CompletableFuture<ArrayList<Long>> future1 = CompletableFuture.supplyAsync(() -> {
-		CompletableFuture<ArrayList<Long>> resCatComp = resourcesCacheRepo.findResourceClassesForCatalog(resCatSeqNo); 
-		ArrayList<Long> resCatList =null;
-		try
+		CopyOnWriteArrayList<Long> resLocList =null;
+		try {
+			CopyOnWriteArrayList<ResourceCatalogLocaStructureCache> resLocComp = resourceCatalogLocaStructureCacheServ.getAllResourceCatalogLocaStructures(resCatSeqNo);
+			resLocList =new CopyOnWriteArrayList<Long>();;
+			
+			if (resLocComp != null && resLocComp.size() > 0) 
+			{
+				for (int i = 0; i < resLocComp.size(); i++) 
+				{
+					if (resLocComp.get(i).getParLocationClassSeqNo() != null) {
+						resLocList.add(resLocComp.get(i).getParLocationClassSeqNo());
+					}
+				}
+				for (int i = 0; i < resLocComp.size(); i++) 
+				{
+					if (resLocComp.get(i).getLocationClassSeqNo() != null) {
+						resLocList.add(resLocComp.get(i).getLocationClassSeqNo());
+					}
+				}
+			}	
+			
+		}
+		catch (InterruptedException e) 
 		{
-			resCatList = resCatComp.get();
-			} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (ExecutionException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}			
-			return resCatList;
+		} 
+		return resLocList;
 		},asyncExecutor);
+	
+
+	
+		// get locationsList for locations in locationClassList from place_class_details
+	CompletableFuture<CopyOnWriteArrayList<Long>> future4 = future3.thenApplyAsync((input) -> 
+	{
 		
-		// get resources for resource classes in resourceclassList from resource_class_details
-		CompletableFuture<ArrayList<Long>> future2 = future1.whenComplete((input, exception) -> 
+		CopyOnWriteArrayList<Long> resList = null;
+	    if (input!= null) 
+        {
+	   	    resList = resourcesCacheRepo.findLocationsForLocationsInLocationClasses(input);
+    }
+	    return resList;
+	},asyncExecutor);
+					
+			// get resources for locationsList from resource_location_master
+	CompletableFuture<ArrayList<Long>> future5 = future4.thenApplyAsync((input) -> 
+	{
+		CopyOnWriteArrayList<Long> resList = null;
+		ArrayList<Long> resLst = new ArrayList<Long>(); 
+		
+		if (input!= null) 
+        {
+	    	resList = resourcesCacheRepo.findResourcesForLocations(input);
+        }
+	    
+		synchronized (resLst) 
 		{
-            if (exception == null) 
-            {
-            	    CompletableFuture.supplyAsync(() -> {            	    
-            		CompletableFuture<ArrayList<Long>> resCatComp = resourcesCacheRepo.findResourcesForResourceClasses(input); 
-            		ArrayList<Long> resCatList =null;
-            		try
-            		{
-            			resCatList = resCatComp.get();            			
-            		} catch (InterruptedException e) {
-            			// TODO Auto-generated catch block
-            			e.printStackTrace();
-            		} catch (ExecutionException e) {
-            			// TODO Auto-generated catch block
-            			e.printStackTrace();
-            		}			
-            			return resCatList;
-            		},asyncExecutor);            	
-            	
-            } else {
-                System.out.println("Resource Classes exception, No Result: " + input);
-            }
-        });
+		for (int i = 0; i < resList.size(); i++) 
+		{
+		resLst.add(resList.get(i));	
+		}	
+		}
+	    return resLst;
+	},asyncExecutor);
+	
+	return future5;
+}
+	// get resources for suppliers
+	private CompletableFuture<ArrayList<Long>> getResourcesForSuppliers(Long resCatSeqNo) throws InterruptedException, ExecutionException 
+	{
+		// get supplierclassList from resource_catalog_compclasses
+		CompletableFuture<CopyOnWriteArrayList<Long>> future6 = CompletableFuture.supplyAsync(() -> 
+		{
+			CopyOnWriteArrayList<ResourceCatalogCompClassesCache> supClassComps=null;
+			try {
+				supClassComps = resourceCatalogCompClassesCacheServ.getAllResourceCatalogCompClasses(resCatSeqNo);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (ExecutionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			CopyOnWriteArrayList<Long> supClassList =new CopyOnWriteArrayList<Long>();
 			
-				// get locationClassList from resource_catalog_locstructure
-		CompletableFuture<ArrayList<Long>> future3 = CompletableFuture.supplyAsync(() -> {
-			CompletableFuture<ArrayList<Long>> resLocComp = resourcesCacheRepo.findLocationClassesForCatalog(resCatSeqNo); 
-			ArrayList<Long> resLocList =null;
-			try
+			if (supClassComps != null && supClassComps.size() > 0) 
 			{
-				resLocList = resLocComp.get();
-				logger.info("future 3 list size :"+resLocList.size());
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (ExecutionException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}			
-				return resLocList;
-			},asyncExecutor);
-		
-			// get locationsList for locations in locationClassList from place_class_details
-		CompletableFuture<ArrayList<Long>> future4 = future3.whenComplete((input, exception) -> 
-		{
-            if (exception == null) 
-            {
-            	    CompletableFuture.supplyAsync(() -> {
-            		CompletableFuture<ArrayList<Long>> resLComp = resourcesCacheRepo.findLocationsForLocationsInLocationClasses(input); 
-            		ArrayList<Long> reslLList =null;
-            		try
-            		{
-            			reslLList = resLComp.get();            			
-            		} catch (InterruptedException e) {
-            			// TODO Auto-generated catch block
-            			e.printStackTrace();
-            		} catch (ExecutionException e) {
-            			// TODO Auto-generated catch block
-            			e.printStackTrace();
-            		}			
-            			return reslLList;
-            		},asyncExecutor);            	
-            	
-            } else {
-                System.out.println("Locations List exception, No Result: " + input);
-            }
-        });
-				// get resources for locationsList from resource_location_master
-		CompletableFuture<ArrayList<Long>> future5 = future4.whenComplete((input, exception) -> 
-		{
-            if (exception == null) 
-            {
-            		CompletableFuture.supplyAsync(() -> {
-            		CompletableFuture<ArrayList<Long>> resComp = resourcesCacheRepo.findResourcesForLocations(input); 
-            		ArrayList<Long> resList =null;
-            		try
-            		{
-            			resList = resComp.get();            		
-            		} catch (InterruptedException e) {
-            			// TODO Auto-generated catch block
-            			e.printStackTrace();
-            		} catch (ExecutionException e) {
-            			// TODO Auto-generated catch block
-            			e.printStackTrace();
-            		}			
-            			return resList;
-            		},asyncExecutor);            	
-            	
-            } else {
-                System.out.println("Resources List exception, No Result: " + input);
-            }
-        });
-				
-				// get supplierclassList from resource_catalog_compclasses
-		CompletableFuture<ArrayList<Long>> future6 = CompletableFuture.supplyAsync(() -> 
-		{
-			CompletableFuture<ArrayList<Long>> supClassComp = resourcesCacheRepo.findSuppliersForResourceCatalog(resCatSeqNo); 
-			ArrayList<Long> supClassList =null;
-			try
-			{
-				supClassList = supClassComp.get();				
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (ExecutionException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}			
+				for (int i = 0; i < supClassComps.size(); i++) 
+				{
+					if (supClassComps.get(i).getCompClassSeqNo() != null) {
+						supClassList.add(supClassComps.get(i).getCompClassSeqNo());
+					}
+				}
+
+				}						
 				return supClassList;
 			},asyncExecutor);
 		
 		// get suppliersList for suppliers in supplierClassList from supplier_class_details
-		CompletableFuture<ArrayList<Long>> future7 = future6.whenComplete((input, exception) -> 
+		CompletableFuture<CopyOnWriteArrayList<Long>> future7 = future6.thenApplyAsync((input) -> 
 		{
-            if (exception == null) 
+			CopyOnWriteArrayList<Long> supComp = null;
+            if (input != null) 
             {
-            		CompletableFuture.supplyAsync(() -> {
-            		CompletableFuture<ArrayList<Long>> supComp = resourcesCacheRepo.findSupplierListForSupplierClasses(input); 
-            		ArrayList<Long> supList =null;
-            		try
-            		{
-            			supList = supComp.get();            		
-            		} catch (InterruptedException e) {
-            			// TODO Auto-generated catch block
-            			e.printStackTrace();
-            		} catch (ExecutionException e) {
-            			// TODO Auto-generated catch block
-            			e.printStackTrace();
-            		}			
-            			return supList;
-            		},asyncExecutor);            	
-            	
-            } else {
-                System.out.println("Supplers List exception, No Result: " + input);
+            		supComp = resourcesCacheRepo.findSupplierListForSupplierClasses(input); 
             }
-        });
+    	    return supComp;
+    	},asyncExecutor);
 		
-				// get resources for suppliersList from SUPPLIER_PRODSERV_details	
-		CompletableFuture<ArrayList<Long>> future8 = future7.whenComplete((input, exception) -> 
+		// get resources for suppliersList from SUPPLIER_PRODSERV_details	
+		CompletableFuture<ArrayList<Long>> future8 = future7.thenApplyAsync((input) -> 
 		{
-            if (exception == null) 
+			CopyOnWriteArrayList<Long> resList = null;
+            ArrayList<Long> resLst = new ArrayList<Long>(); 
+			
+            if (input != null) 
             {
-            		CompletableFuture.supplyAsync(() -> {
-            		CompletableFuture<ArrayList<Long>> resComp = resourcesCacheRepo.findResourcesForSuppliers(input); 
-            		ArrayList<Long> resList =null;
-            		try
-            		{
-            			resList = resComp.get();            		
-            		} catch (InterruptedException e) {
-            			// TODO Auto-generated catch block
-            			e.printStackTrace();
-            		} catch (ExecutionException e) {
-            			// TODO Auto-generated catch block
-            			e.printStackTrace();
-            		}			
-            			return resList;
-            		},asyncExecutor);            	
-            	
-            } else {
-                System.out.println("Resource List exception, No Result: " + input);
+            	resList = resourcesCacheRepo.findResourcesForSuppliers(input); 
             }
-        });		
-		
-		// get resources for ratingsList 
-		CompletableFuture<ArrayList<Long>> future9 = CompletableFuture.supplyAsync(() -> 
-		{
-			ArrayList<Float> supRateList = resourcesCacheRepo.findRatingsForResourceCatalog(resCatSeqNo); 
-			ArrayList<Long> resList= resourcesCacheRepo.findResourcesForRatings(supRateList);
-			return resList;
-			},asyncExecutor);
-		
-			 
-		// get resources for for  high and low price range 
-		CompletableFuture<ArrayList<Long>> future10 = CompletableFuture.supplyAsync(() -> 
-		{
-			Float hiPriceList = resourcesCacheRepo.findPriceRangeLowForResourceCatalog(resCatSeqNo);
-			Float lowPriceList = resourcesCacheRepo.findPriceRangeHighForResourceCatalog(resCatSeqNo);
-			ArrayList<Long> resList= resourcesCacheRepo.findResourcesForPriceRange(lowPriceList, hiPriceList);
-			return resList;
-			},asyncExecutor);
-			
-				// get resources for matching prodservseqnos in SUPPLIER_PRODSERV_details & SUPPLIER_PRODSERV_prices & priceRange 
-		
-			//CompletableFuture<Void> futureResult = CompletableFuture.allOf(future1, future2, future3, future4, future5, future6, future7, future8, future9, future10);
-			
-			
-			 List<CompletableFuture<ArrayList<Long>>> completableFutures = Arrays.asList(future1, future2, future3, future4, future5, future6, future7, future8, future9, future10);
+            
+    		synchronized (resLst) 
+    		{
+    		for (int i = 0; i < resList.size(); i++) 
+    		{
+    		resLst.add(resList.get(i));	
+    		}	
+    		}
+    	    return resLst;
 
-		       CompletableFuture<Void> resultantCf = CompletableFuture.allOf(completableFutures.toArray(new CompletableFuture[completableFutures.size()]));
+    	},asyncExecutor);
 
-		        CompletableFuture<Object> allResults = resultantCf.thenApply(t -> completableFutures.stream().map(CompletableFuture::join).collect(Collectors.toList()));
-			
-		        Thread.sleep(1000);
-		        
-		        @SuppressWarnings("unchecked")
-				ArrayList<Long> gg = (ArrayList<Long>) allResults.get();
-		        		        
-		        logger.info("in service :");
-		        for (int i = 0; i < gg.size(); i++) 
-		        {
-		        logger.info("result :"+gg.get(i));
-				}
-		        
-				//List<Long> allList = Stream.of(future2, future5, future8, future9, future10).map(CompletableFuture::join).flatMap(List::stream).collect(Collectors.toList());		
-				return gg;				
+		return future8;		
 				
-}
-
-*/
-
-	public String getAllResources() 
+	}
+	
+	// get resources for ratings
+	private CompletableFuture<ArrayList<Long>> getResourcesForRatings(Long resCatSeqNo) throws InterruptedException, ExecutionException 
 	{
-        return "Am Waiting For Data From Host";
+		CompletableFuture<CopyOnWriteArrayList<Float>> future9 = CompletableFuture.supplyAsync(() -> 
+		{
+			CopyOnWriteArrayList<ResourceCatalogRatingsCache> supRateList=null;
+			try {
+				supRateList = resourceCatalogRatingsCacheServ.getAllResourceCatalogRatings(resCatSeqNo);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (ExecutionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} 
+			CopyOnWriteArrayList<Float>  cList = new CopyOnWriteArrayList<Float>(); 
+			if(supRateList!=null)
+			{	
+			for (int i = 0; i < supRateList.size(); i++) 
+			{
+			cList.add(supRateList.get(i).getRating());	
+			}	
+			}
+			return cList;
+		},asyncExecutor);
+		
+		CompletableFuture<ArrayList<Long>> future10 = future9.thenApplyAsync((input) -> 
+		{
+			CopyOnWriteArrayList<Long> resList = null;
+			ArrayList<Long> resLst = new ArrayList<Long>();
+			
+			if (input != null) 
+            {
+            resList= resourcesCacheRepo.findResourcesForRatings(input); 
+            }
+			
+			synchronized (resLst) 
+    		{
+    		for (int i = 0; i < resList.size(); i++) 
+    		{
+    		resLst.add(resList.get(i));	
+    		}	
+    		}
+    	    return resLst;    	    
+    	},asyncExecutor);
+
+		return future10;
+	}
+	
+
+	// get resources for price range
+	private CompletableFuture<ArrayList<Long>> getResourcesForPriceRange(Long resCatSeqNo) throws InterruptedException, ExecutionException 
+	{
+        CompletableFuture<ResourceCatalogPriceRangeCache> future11 = CompletableFuture.supplyAsync(() -> 
+		{
+			ResourceCatalogPriceRangeCache supPriceRange=null;
+			
+			try {
+				supPriceRange = resourceCatalogPriceRangeCacheServ.getAllResourceCatalogPriceRange(resCatSeqNo);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (ExecutionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} 
+			
+			return supPriceRange;
+		},asyncExecutor);
+		
+		CompletableFuture<ArrayList<Long>> future12 = future11.thenApplyAsync((input) -> 
+		{
+			CopyOnWriteArrayList<Long> resList = null;
+			ArrayList<Long> resLst = new ArrayList<Long>();
+            
+			if (input != null) 
+            {
+			resList= resourcesCacheRepo.findResourcesForPriceRange(input.getFrPrice(),input.getToPrice()); 
+            }
+			synchronized (resLst) 
+    		{
+    		for (int i = 0; i < resList.size(); i++) 
+    		{
+    		resLst.add(resList.get(i));	
+    		}	
+    		}
+    	    return resLst;    	    
+
+    	},asyncExecutor);
+
+		return future12;
+	}
+
+	@Cacheable("resourcesCache")
+	public ArrayList<Long> getAllResources() throws InterruptedException, ExecutionException 
+	{
+        CompletableFuture<ArrayList<Long>> future13 = CompletableFuture.supplyAsync(() -> 
+		{
+			ArrayList<Long> resList=null;
+			
+			CopyOnWriteArrayList<Long>	cpresList = resourcesCacheRepo.findAllResources();
+			if(cpresList!=null)
+			{
+			resList = new ArrayList<Long>();
+			
+			for (int i = 0; i < cpresList.size(); i++) 
+			{
+			resList.add(cpresList.get(i));	
+			}
+			}			
+			
+			
+			return resList;
+		},asyncExecutor);
+
+	return future13.get();
 	}
 }

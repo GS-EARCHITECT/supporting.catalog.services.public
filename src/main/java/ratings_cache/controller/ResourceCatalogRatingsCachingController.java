@@ -1,6 +1,7 @@
 package ratings_cache.controller;
 
 import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -27,9 +28,9 @@ public class ResourceCatalogRatingsCachingController
 	private IResourceCatalogRatingsCache_Service resourceCatalogRatingsCacheServ;
 
 	@GetMapping(value = "/getAllResourceCatalogRatingsFromCache/{resCatSeqNo}", produces = { MediaType.APPLICATION_JSON_VALUE })
-	public ResponseEntity<ArrayList<ResourceCatalogRatingsCache>> getAllResourceCatalogRatingssFromCache(@PathVariable Long resCatSeqNo) 
+	public ResponseEntity<CopyOnWriteArrayList<ResourceCatalogRatingsCache>> getAllResourceCatalogRatingssFromCache(@PathVariable Long resCatSeqNo) 
 	{
-		ArrayList<ResourceCatalogRatingsCache> resourceCatalogDTOs=null;
+		CopyOnWriteArrayList<ResourceCatalogRatingsCache> resourceCatalogDTOs=null;
 		try {
 			resourceCatalogDTOs = resourceCatalogRatingsCacheServ.getAllResourceCatalogRatings(resCatSeqNo);
 		} catch (InterruptedException e) {

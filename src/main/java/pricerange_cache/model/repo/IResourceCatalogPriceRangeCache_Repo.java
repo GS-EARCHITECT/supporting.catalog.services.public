@@ -1,11 +1,9 @@
 package pricerange_cache.model.repo;
 
-import java.util.ArrayList;
-import java.util.concurrent.CompletableFuture;
-
+import java.util.concurrent.CopyOnWriteArrayList;
 import pricerange_cache.model.master.ResourceCatalogPriceRangeCache;
 
 public interface IResourceCatalogPriceRangeCache_Repo 
 {
-public CompletableFuture<ArrayList<ResourceCatalogPriceRangeCache>> findResourceCatalogPriceRanges(Long resCatSeqNo);	
+public CopyOnWriteArrayList<ResourceCatalogPriceRangeCache> findResourceCatalogPriceRanges(Long resCatSeqNo);	
 }

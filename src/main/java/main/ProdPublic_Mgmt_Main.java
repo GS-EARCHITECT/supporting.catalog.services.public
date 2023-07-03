@@ -32,8 +32,8 @@ public class ProdPublic_Mgmt_Main extends SpringBootServletInitializer
 	  @Bean(name = "asyncExecutor")
 	  public Executor taskExecutor() {
 	    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-	    executor.setCorePoolSize(10);
-	    executor.setMaxPoolSize(10);
+	    executor.setCorePoolSize(50);
+	    executor.setMaxPoolSize(100);
 	    executor.setQueueCapacity(500);
 	    executor.setThreadNamePrefix("prodservmods");
 	    executor.initialize();
