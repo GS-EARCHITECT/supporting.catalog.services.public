@@ -14,7 +14,7 @@ public class CacheConfig {
   @Bean
   public CacheManager cacheManager() {
     ConcurrentMapCacheManager mgr = new ConcurrentMapCacheManager();
-    mgr.setCacheNames(asList("prodStructureCache","locaStructureCache","ratingsCache","priceRangeCache","compClassesCache","resourcesCache"));
+    mgr.setCacheNames(asList("servStructureCache","locaStructureCache","ratingsCache","priceRangeCache","compClassesCache","servicesCache"));
     return mgr;
   }
 }

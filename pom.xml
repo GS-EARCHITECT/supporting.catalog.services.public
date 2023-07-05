@@ -11,10 +11,10 @@
 	</parent>
 
 	<groupId>myABC</groupId>
-	<artifactId>supporting.catalog.products.public</artifactId>
+	<artifactId>supporting.catalog.services.public</artifactId>
 	<packaging>war</packaging>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>supporting.catalog.products.public</name>
+	<name>supporting.catalog.services.public</name>
 	<url>http://maven.apache.org</url>
 
 	<properties>
@@ -123,6 +123,6 @@
 			</plugin>
 		</plugins>
 
-		<finalName>supporting.catalog.products.public</finalName>
+		<finalName>supporting.catalog.services.public</finalName>
 	</build>
 </project>
